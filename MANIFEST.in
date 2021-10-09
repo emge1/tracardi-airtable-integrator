@@ -1,0 +1,2 @@
+recursive-include tracardi_airtable_integrator/model *
+recursive-include tracardi_airtable_integrator/service *
