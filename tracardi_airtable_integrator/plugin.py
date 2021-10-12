@@ -1,6 +1,7 @@
 from tracardi_plugin_sdk.action_runner import ActionRunner
 from tracardi_plugin_sdk.domain.register import Plugin, Spec, MetaData
 from tracardi_plugin_sdk.domain.result import Result
+from tracardi_dot_notation.dot_accessor import DotAccessor
 
 from tracardi_airtable_integrator.model.configuration import Configuration
 import requests
@@ -14,13 +15,16 @@ class AirTableIntegrator(ActionRunner):
         self.config = Configuration(**kwargs)
 
     async def run(self, payload):
+        dot = DotAccessor(self.profile, self.session, payload, self.event, self.flow)
+        data = dot[self.config.data]
+
         try:
             if self.config.get_data is True and self.config.parse_data is True:
                 raise ValueError("You can't get and parse data at the same time.")
 
             if self.config.get_data is True:
-                if len(self.config.table_name) != 17:
-                    raise ValueError("Base id length need to be equal to 17.")
+                '''if len(self.config.table_name) != 17:
+                    raise ValueError("Base id length need to be equal to 17.")'''
 
                 table_name = self.config.table_name.lower().replace(" ", "_")
                 url = f"https://api.airtable.com/v0/{self.config.base_id}/{table_name}"
@@ -39,10 +43,7 @@ class AirTableIntegrator(ActionRunner):
                 return Result(port="payload", value=response)
 
             if self.config.parse_data is True:
-                if len(self.config.table_name) != 17:
-                    raise ValueError("Base id length need to be equal to 17.")
-
-                table_name = self.config.table_name.lower().replace(" ", "_")
+                table_name = self.config.table_name  # .lower().replace(" ", "_")
                 url = f"https://api.airtable.com/v0/{self.config.base_id}/{table_name}"
 
                 if self.config.record_id is not None:
@@ -54,8 +55,8 @@ class AirTableIntegrator(ActionRunner):
                 headers = {"Authorization": f"Bearer {self.config.api_key}",
                            "Content-Type": "application/json"}
 
-                if self.config.record_id is None:  # posting data
-                    upload_dict = {"records": [{"fields": self.config.upload_data}], "typecast": False}
+                if self.config.record_id is None:
+                    upload_dict = {"records": [{"fields": data}], "typecast": False}
                     upload_json = json.dumps(upload_dict)
 
                     response = requests.post(url=url, data=upload_json, headers=headers)
@@ -63,8 +64,8 @@ class AirTableIntegrator(ActionRunner):
 
                     return Result(port="payload", value=response)
 
-                else:  # patching data
-                    upload_dict = {"fields": self.config.upload_data, "typecast": True}
+                else:
+                    upload_dict = {"fields": data, "typecast": True}
                     upload_json = json.dumps(upload_dict)
 
                     response = requests.patch(url=url, data=upload_json, headers=headers)
@@ -83,7 +84,7 @@ def register() -> Plugin:
             module='tracardi_airtable_integrator.plugin',
             className='AirTableIntegrator',
             inputs=["payload"],
-            outputs=['payload'],
+            outputs=['result', 'error'],
             version='0.1',
             license="MIT",
             author="Marcin Gaca",
@@ -99,7 +100,7 @@ def register() -> Plugin:
             }
         ),
         metadata=MetaData(
-            name='tracardi-airtable-integrator',
+            name="tracardi-airtable-integrator",
             desc='This plugin connects Tracardi to AirTable.',
             type='flowNode',
             width=200,

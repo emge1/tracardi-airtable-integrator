@@ -6,18 +6,27 @@ from tracardi.domain.session import Session
 from tracardi_plugin_sdk.service.plugin_runner import run_plugin
 
 from tracardi_airtable_integrator.plugin import AirTableIntegrator
+import asyncio
 
-init = {}
-payload = {}
-profile = Profile(id="profile-id")
-event = Event(id="event-id",
-              type="event-type",
-              profile=profile,
-              session=Session(id="session-id"),
-              source=Entity(id="source-id"),
-              context=Context())
-result = run_plugin(AirTableIntegrator, init, payload,
-                    profile)
 
-print("OUTPUT:", result.output)
-print("PROFILE:", result.profile)
+async def main():
+    init = {
+        "get_data": True,
+        "parse_data": False,
+        "base_id": "your_base_id",
+        "table_name": "Table 1",
+        "record_id": 'your_record_id',
+        "params": None,
+        "api_key": "your_api_key",
+        "upload_data": {'some': 'data'},
+    }
+    payload = {}
+    plugin = AirTableIntegrator(**init)
+
+    payload = {}
+
+    results = await plugin.run(payload)
+    print(results)
+
+
+asyncio.run(main())
